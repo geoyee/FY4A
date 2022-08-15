@@ -260,7 +260,7 @@ class Arg(argparse.ArgumentParser):
         self.add_argument('-d', '--debug', action='store_true', help='如果输入-d，则表示进行debug，输出logging，否则不输出')
         self.add_argument('-t', '--time', default=datetime.datetime.now().strftime('%Y%m%d%H%M'),
                           help='指定时刻或时段，如：201906110900，或：201906110900 201906111000，默认为当前北京时刻', nargs='*')
-        self.add_argument('-xml', '--xml_path', default=os.path.join(sys.path[0], 'config', 'config.xml'),
+        self.add_argument('-xml', '--xml_path', default=os.path.join(sys.path[0], 'prefy4a', 'FY4A', 'codes', 'config', 'config.xml'),
                           help='输入配置文件路径, 默认值为：config/config.xml')
 
     def arg_parse(self, args_list=None):

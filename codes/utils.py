@@ -19,6 +19,7 @@ import scipy.interpolate as ip
 import datetime as dt
 import pickle
 import xarray as xr
+import rioxarray
 import pandas as pd
 import os
 import logging
@@ -289,6 +290,11 @@ def gen_nc_simple(data: ndarray, lat: ndarray, lon: ndarray, save_path: str):
     ds.coords['lon'] = ('lon', lon)
     ds['var'] = (('lat', 'lon'), data.reshape((len(lat), len(lon))))
     ds.to_netcdf(save_path)
+
+def gen_tif_simple(data: ndarray, lat: ndarray, lon: ndarray, save_path: str):
+    ds = xr.DataArray(data.reshape((len(lat), len(lon))), coords=[lat, lon], dims=['y', 'x'])
+    ds.rio.write_crs("epsg:4236", inplace=True)
+    ds.rio.to_raster(save_path)
 
 def ispath(path: str):
     # 判断路径是否存在，不存在就生成这个路径

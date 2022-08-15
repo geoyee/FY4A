@@ -12,12 +12,12 @@ python version: python 3.6.13
 import struct
 from typing import Tuple
 import numpy as np
-import utils
+from . import utils
 import xarray as xr
 from numpy import ndarray
 import scipy.interpolate as ip
 import os
-import components
+from . import components
 import logging
 import datetime as dt
 
@@ -213,7 +213,8 @@ class FY4A(CFG):
         points = np.c_[ori_lat[flag > 0], ori_lon[flag > 0]]
         new_data = ip.griddata(points, values, (new_lat_2d, new_lon_2d), method=method)
         if sv_path != '':
-            utils.gen_nc_simple(new_data, new_lat, new_lon, sv_path)
+            # utils.gen_nc_simple(new_data, new_lat, new_lon, sv_path)
+            utils.gen_tif_simple(new_data, new_lat, new_lon, sv_path)
         return new_data
 
     def raw_to_lat_lon(self, raw_path: str) -> Tuple[ndarray, ndarray]:
@@ -499,22 +500,20 @@ class FY4A(CFG):
         ori_lat, ori_lon, flag, data = ds['lat'].values, ds['lon'].values, ds['flag'].values, ds[data_name].values
         return self.gen_new_data(data, ori_lat, ori_lon, new_lat, new_lon, flag, method, sv_path)
 
-
-arg = components.Arg()
-arg_parsed = arg.arg_parse('-d'.split())  # 代码输入参数
-# arg_parsed = arg.arg_parse()  # 命令行输入参数
-
-fy4a = FY4A(arg_parsed)
-
-
-# FY4A文件路径(任写一种产品即可)
-file_path = r'/home/developer_13/FY4A/codes/test_FY4A_data/' \
-            r'FY4A-_AGRI--_N_DISK_1047E_L2-_CLT-_MULT_NOM_20210923010000_20210923011459_4000M_V0001.NC'
-# 存储nc的路径
-sv_path = r'/home/developer_13/FY4A/codes/CLT.nc'
-# 需要插值的经纬度
-new_lon, new_lat = utils.gen_lat_lon(70, 140, 60, 0, 0.04)
-# 得到数据块，并存储为nc
-fy4a.get_data_from_data_name(file_path, 'CLT', new_lon, new_lat, sv_path=sv_path)
-# 数据对象
-logging.debug(fy4a.read_FY4A(file_path))
+    def get_data_from_4k_fdi(self, file_path: str, new_lon: ndarray, new_lat:ndarray,
+                             method: str = 'linear', sv_path: str = '') -> ndarray:
+        ds = self.read_FY4A(file_path)
+        pre_data_name = "NOMChannel"
+        datas = []
+        for i in range(1, 15):
+            data_name = pre_data_name + str(i).zfill(2)
+            ori_lat, ori_lon, flag, data = ds['lat'].values, ds['lon'].values, ds['flag'].values, ds[data_name].values
+            datas.append(
+                self.gen_new_data(
+                    data, ori_lat, ori_lon, new_lat, new_lon, flag, method).reshape(
+                        (len(new_lat), len(new_lon)))[np.newaxis, :])
+        cdata = np.concatenate(datas, axis=0)
+        ds = xr.DataArray(cdata, coords=[list(range(1, 15)), new_lat, new_lon], dims=['band', 'y', 'x'])
+        ds.rio.write_crs("epsg:4236", inplace=True)
+        ds.rio.to_raster(sv_path)
+        return data
